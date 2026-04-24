@@ -5,7 +5,7 @@ import {
   DialogActions, Paper, IconButton,
 } from '@mui/material';
 import { Close, History, Save } from '@mui/icons-material';
-import AppHeader from '../components/AppHeader';
+import AppHeader, { HEADER_HEIGHT } from '../components/AppHeader';
 import { mockEditHistory, mockReports } from '../mockData';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -95,7 +95,7 @@ export default function EditHistoryPage() {
         onBack={() => navigate(`/editor/${id}`)}
       />
 
-      <Box sx={{ pt: '64px' }}>
+      <Box sx={{ pt: `${HEADER_HEIGHT}px` }}>
         <Box sx={{ maxWidth: 1000, mx: 'auto', px: 3, py: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
             <History sx={{ color: 'primary.main' }} />

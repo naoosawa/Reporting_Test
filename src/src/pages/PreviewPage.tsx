@@ -8,7 +8,7 @@ import {
   PictureAsPdf, Description, GridOn, Download, ChevronRight,
   ExpandMore, History,
 } from '@mui/icons-material';
-import AppHeader from '../components/AppHeader';
+import AppHeader, { HEADER_HEIGHT } from '../components/AppHeader';
 import { mockExportHistory, mockSections, mockReports } from '../mockData';
 import type { ExportHistory } from '../types';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -51,7 +51,7 @@ export default function PreviewPage() {
         onBack={() => navigate(`/editor/${id}`)}
       />
 
-      <Box sx={{ display: 'flex', pt: '64px' }}>
+      <Box sx={{ display: 'flex', pt: `${HEADER_HEIGHT}px` }}>
         {/* S-4-1: Preview area */}
         <Box sx={{ flex: 1, px: 3, py: 4, display: 'flex', justifyContent: 'center' }}>
           <Paper
@@ -184,8 +184,8 @@ export default function PreviewPage() {
             flexShrink: 0,
             '& .MuiDrawer-paper': {
               width: HISTORY_PANEL_WIDTH,
-              top: 64,
-              height: 'calc(100% - 64px)',
+              top: HEADER_HEIGHT,
+              height: `calc(100% - ${HEADER_HEIGHT}px)`,
             },
           }}
         >

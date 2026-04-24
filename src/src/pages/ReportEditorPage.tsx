@@ -12,7 +12,7 @@ import {
   Add, DragIndicator, Close, Refresh, TableChart,
   TextFields, Warning,
 } from '@mui/icons-material';
-import AppHeader from '../components/AppHeader';
+import AppHeader, { HEADER_HEIGHT } from '../components/AppHeader';
 import { mockSections, mockKPIs, mockReports } from '../mockData';
 import type { Section, KPI } from '../types';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -418,14 +418,14 @@ export default function ReportEditorPage() {
         onHistory={() => navigate(`/history/${id}`)}
       />
 
-      <Box sx={{ display: 'flex', pt: '64px' }}>
+      <Box sx={{ display: 'flex', pt: `${HEADER_HEIGHT}px` }}>
         {/* S-2-2-1: Section sidebar */}
         <Drawer
           variant="permanent"
           sx={{
             width: DRAWER_WIDTH,
             flexShrink: 0,
-            '& .MuiDrawer-paper': { top: 64, height: 'calc(100% - 64px)', width: DRAWER_WIDTH },
+            '& .MuiDrawer-paper': { top: HEADER_HEIGHT, height: `calc(100% - ${HEADER_HEIGHT}px)`, width: DRAWER_WIDTH },
           }}
         >
           <Box sx={{ p: 2, pb: 1 }}>
@@ -629,7 +629,7 @@ export default function ReportEditorPage() {
               borderColor: 'divider',
               position: 'fixed',
               right: 0,
-              top: 64,
+              top: HEADER_HEIGHT,
               bottom: 0,
               overflowY: 'auto',
             }}

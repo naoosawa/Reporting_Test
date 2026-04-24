@@ -1,60 +1,52 @@
 import { useState } from 'react';
 import {
-  Box, Card, CardContent, CardActionArea, Typography, Chip,
+  Box, Card, CardActionArea, CardContent, Typography,
   IconButton, Menu, MenuItem, Button, Dialog, DialogTitle,
   DialogContent, DialogContentText, DialogActions, Skeleton,
-  Tabs, Tab, Tooltip, Snackbar, Alert, Grid,
+  Snackbar, Alert, Avatar,
 } from '@mui/material';
 import {
-  MoreVert, Delete, ContentCopy, Upload, DeleteOutlined,
-  RestoreFromTrash,
+  MoreVert, Delete, ContentCopy, DeleteOutlined, Info,
 } from '@mui/icons-material';
-import AppHeader from '../components/AppHeader';
-import { mockReports, mockDeletedReports } from '../mockData';
+import AppHeader, { HEADER_HEIGHT } from '../components/AppHeader';
 import type { Report } from '../types';
 import { useNavigate } from 'react-router-dom';
 
-export default function ReportListPage() {
+interface ReportListPageProps {
+  reports: Report[];
+  setReports: React.Dispatch<React.SetStateAction<Report[]>>;
+  setDeletedReports: React.Dispatch<React.SetStateAction<Report[]>>;
+}
+
+export default function ReportListPage({
+  reports,
+  setReports,
+  setDeletedReports,
+}: ReportListPageProps) {
   const navigate = useNavigate();
-  const [tab, setTab] = useState(0);
-  const [reports, setReports] = useState<Report[]>(mockReports);
-  const [deletedReports, setDeletedReports] = useState<Report[]>(mockDeletedReports);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [purgeDialogOpen, setPurgeDialogOpen] = useState(false);
   const [loading] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, report: Report) => {
-    event.stopPropagation();
-    setMenuAnchor(event.currentTarget);
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>, report: Report) => {
+    e.stopPropagation();
+    setMenuAnchor(e.currentTarget);
     setSelectedReport(report);
   };
 
-  const handleMenuClose = () => {
-    setMenuAnchor(null);
-  };
+  const handleMenuClose = () => setMenuAnchor(null);
 
   const handleDelete = () => {
     if (!selectedReport) return;
     setReports((prev) => prev.filter((r) => r.id !== selectedReport.id));
-    setDeletedReports((prev) => [...prev, { ...selectedReport, deletedAt: new Date().toISOString().split('T')[0] }]);
+    setDeletedReports((prev) => [
+      ...prev,
+      { ...selectedReport, deletedAt: new Date().toISOString().split('T')[0] },
+    ]);
     setDeleteDialogOpen(false);
     setSnackbar({ open: true, message: `「${selectedReport.title}」をゴミ箱に移動しました` });
-  };
-
-  const handleRestore = (report: Report) => {
-    setDeletedReports((prev) => prev.filter((r) => r.id !== report.id));
-    setReports((prev) => [...prev, { ...report, deletedAt: undefined }]);
-    setSnackbar({ open: true, message: `「${report.title}」を復元しました` });
-  };
-
-  const handlePurge = () => {
-    if (!selectedReport) return;
-    setDeletedReports((prev) => prev.filter((r) => r.id !== selectedReport.id));
-    setPurgeDialogOpen(false);
-    setSnackbar({ open: true, message: `「${selectedReport.title}」を完全削除しました` });
   };
 
   const handleDuplicate = () => {
@@ -66,196 +58,96 @@ export default function ReportListPage() {
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
       status: 'draft',
+      hasUpdates: false,
     };
     setReports((prev) => [copy, ...prev]);
     handleMenuClose();
     setSnackbar({ open: true, message: 'レポートを複製しました' });
   };
 
-  const autoDeleteDate = (deletedAt: string) => {
-    const d = new Date(deletedAt);
-    d.setDate(d.getDate() + 30);
-    return d.toLocaleDateString('ja-JP');
-  };
-
   return (
     <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
       <AppHeader variant="list" />
 
-      <Box sx={{ pt: '64px' }}>
-        <Box sx={{ maxWidth: 1200, mx: 'auto', px: 3, py: 4 }}>
-          {/* Tabs */}
-          <Tabs
-            value={tab}
-            onChange={(_, v) => setTab(v)}
-            sx={{ mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}
+      <Box sx={{ pt: `${HEADER_HEIGHT}px` }}>
+        {/* Action bar: ゴミ箱ボタン */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            px: 3,
+            py: 1,
+          }}
+        >
+          <Button
+            size="small"
+            startIcon={<DeleteOutlined fontSize="small" />}
+            onClick={() => navigate('/trash')}
+            sx={{
+              color: 'text.secondary',
+              fontSize: '15px',
+              fontWeight: 700,
+              height: 42,
+              '&:hover': { bgcolor: 'transparent', color: 'text.primary' },
+            }}
           >
-            <Tab label="レポート一覧" />
-            <Tab
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <DeleteOutlined fontSize="small" />
-                  ゴミ箱 {deletedReports.length > 0 && `(${deletedReports.length})`}
-                </Box>
-              }
-            />
-          </Tabs>
+            ゴミ箱
+          </Button>
+        </Box>
 
-          {/* S-1-1: Report List */}
-          {tab === 0 && (
-            <>
-              {/* Import area */}
-              <Box
-                sx={{
-                  border: '2px dashed',
-                  borderColor: 'divider',
-                  borderRadius: 2,
-                  p: 3,
-                  mb: 3,
-                  textAlign: 'center',
-                  bgcolor: 'background.paper',
-                  cursor: 'pointer',
-                  '&:hover': { borderColor: 'primary.main', bgcolor: '#e2edea' },
-                }}
-              >
-                <Upload sx={{ color: 'text.disabled', mb: 1 }} />
-                <Typography variant="body2" color="text.secondary">
-                  PDFをドラッグ＆ドロップ、またはクリックして参考資料をインポート
-                </Typography>
-                <Typography variant="caption" color="text.disabled">
-                  PDF形式 / 最大100MB
-                </Typography>
-              </Box>
+        {/* Card grid */}
+        <Box sx={{ px: 3, pb: 4 }}>
+          {loading ? (
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} variant="rectangular" height={222} sx={{ borderRadius: 2 }} />
+              ))}
+            </Box>
+          ) : (
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+              {/* File drop card */}
+              <DropCard onNavigate={() => navigate('/editor/new')} />
 
-              {loading ? (
-                <Grid container spacing={2}>
-                  {[1, 2, 3].map((i) => (
-                    <Grid key={i} size={{ xs: 12, sm: 6, md: 4 }}>
-                      <Skeleton variant="rectangular" height={140} sx={{ borderRadius: 2 }} />
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : reports.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 8 }}>
-                  <Typography color="text.secondary" sx={{ mb: 2 }}>
-                    レポートがありません。新規作成してください。
-                  </Typography>
-                  <Button variant="contained" startIcon={<Upload />} onClick={() => navigate('/editor/new')}>
-                    新規レポート作成
-                  </Button>
-                </Box>
-              ) : (
-                <Grid container spacing={2}>
-                  {reports.map((report) => (
-                    <Grid key={report.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                      <Card sx={{ position: 'relative', cursor: 'pointer' }}>
-                        <CardActionArea onClick={() => navigate(`/editor/${report.id}`)}>
-                          <CardContent sx={{ pb: '12px !important' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                              <Typography variant="body1" sx={{ flex: 1, pr: 1, lineHeight: 1.4, fontWeight: 700 }}>
-                                {report.title}
-                              </Typography>
-                              <Tooltip title="メニュー">
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => handleMenuOpen(e, report)}
-                                  sx={{ mt: -0.5 }}
-                                >
-                                  <MoreVert fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                              {report.hasUpdates && (
-                                <Chip label="更新あり" size="small" color="error" sx={{ fontSize: '11px', height: 20 }} />
-                              )}
-                              <Chip
-                                label={report.status === 'draft' ? '下書き' : '保存済み'}
-                                size="small"
-                                sx={{
-                                  fontSize: '11px',
-                                  height: 20,
-                                  bgcolor: report.status === 'draft' ? '#e1f5fe' : '#e2edea',
-                                  color: report.status === 'draft' ? '#01579b' : '#235749',
-                                }}
-                              />
-                            </Box>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                              {report.author} · 更新: {report.updatedAt}
-                            </Typography>
-                          </CardContent>
-                        </CardActionArea>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </>
+              {/* Report cards */}
+              {reports.map((report) => (
+                <ReportCard
+                  key={report.id}
+                  report={report}
+                  onOpen={() => navigate(`/editor/${report.id}`)}
+                  onMenuOpen={(e) => handleMenuOpen(e, report)}
+                />
+              ))}
+            </Box>
           )}
 
-          {/* S-1-3: Trash */}
-          {tab === 1 && (
-            <>
-              {deletedReports.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 8 }}>
-                  <Typography color="text.secondary">ゴミ箱は空です。</Typography>
-                </Box>
-              ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                    ゴミ箱内のレポートは削除から30日後に自動で完全削除されます
-                  </Typography>
-                  {deletedReports.map((report) => (
-                    <Card key={report.id}>
-                      <CardContent sx={{ display: 'flex', alignItems: 'center', py: '12px !important' }}>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {report.title}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {report.deletedAt && `削除日: ${report.deletedAt} · 完全削除予定: ${autoDeleteDate(report.deletedAt)}`}
-                          </Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          startIcon={<RestoreFromTrash />}
-                          onClick={() => handleRestore(report)}
-                          sx={{ mr: 1 }}
-                        >
-                          復元
-                        </Button>
-                        <Button
-                          size="small"
-                          color="error"
-                          startIcon={<Delete />}
-                          onClick={() => { setSelectedReport(report); setPurgeDialogOpen(true); }}
-                        >
-                          完全削除
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Box>
-              )}
-            </>
+          {/* Empty state (no reports at all) */}
+          {!loading && reports.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                レポートがありません。新規作成してください。
+              </Typography>
+            </Box>
           )}
         </Box>
       </Box>
 
-      {/* Card context menu */}
+      {/* Context menu */}
       <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
         <MenuItem onClick={handleDuplicate}>
-          <ContentCopy fontSize="small" sx={{ mr: 1 }} />複製
+          <ContentCopy fontSize="small" sx={{ mr: 1 }} />
+          複製
         </MenuItem>
         <MenuItem
           onClick={() => { setDeleteDialogOpen(true); handleMenuClose(); }}
           sx={{ color: 'error.main' }}
         >
-          <Delete fontSize="small" sx={{ mr: 1 }} />削除
+          <Delete fontSize="small" sx={{ mr: 1 }} />
+          削除
         </MenuItem>
       </Menu>
 
-      {/* Delete confirmation dialog */}
+      {/* Delete confirmation */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>レポートを削除しますか？</DialogTitle>
         <DialogContent>
@@ -264,26 +156,11 @@ export default function ReportListPage() {
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteDialogOpen(false)}>キャンセル</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>削除実行</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)} sx={{ height: 36 }}>キャンセル</Button>
+          <Button variant="contained" color="error" onClick={handleDelete} sx={{ height: 36 }}>削除実行</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Purge confirmation dialog */}
-      <Dialog open={purgeDialogOpen} onClose={() => setPurgeDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>完全削除しますか？</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            編集・出力履歴も含めてすべて削除されます。この操作は取り消せません。
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setPurgeDialogOpen(false)}>キャンセル</Button>
-          <Button variant="contained" color="error" onClick={handlePurge}>完全削除実行</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
@@ -297,3 +174,197 @@ export default function ReportListPage() {
     </Box>
   );
 }
+
+// ---- Sub-components ----
+
+function DropCard({ onNavigate }: { onNavigate: () => void }) {
+  const [dragging, setDragging] = useState(false);
+
+  return (
+    <Box
+      sx={{
+        border: '1px dashed',
+        borderColor: 'primary.light',
+        borderRadius: 2,
+        bgcolor: 'background.default',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+        p: 3,
+        minHeight: 222,
+        cursor: 'pointer',
+        transition: 'border-color 0.2s',
+        '&:hover': { borderColor: 'primary.main' },
+        ...(dragging && { borderColor: 'primary.main', bgcolor: 'primary.light' }),
+      }}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); onNavigate(); }}
+      onClick={onNavigate}
+    >
+      {/* Upload icon circle */}
+      <Box
+        sx={{
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          bgcolor: 'background.paper',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="#35836d">
+          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15.01l1.41 1.41L11 14.84V19h2v-4.16l1.59 1.59L16 15.01 12.01 11 8 15.01z" />
+        </svg>
+      </Box>
+
+      <Box sx={{ textAlign: 'center' }}>
+        <Typography sx={{ fontSize: '16px', color: 'text.primary', mb: '2px', lineHeight: 1.75 }}>
+          ファイルをドラッグ&ドロップして作成
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+          （ファイル形式：最大100MBのPDF）
+        </Typography>
+      </Box>
+
+      <Box sx={{ textAlign: 'center' }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+          またはファイルを選択して作成
+        </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+          sx={{
+            height: 30,
+            fontSize: '13px',
+            fontWeight: 700,
+            borderColor: 'rgba(53,131,109,0.5)',
+            '&:hover': { borderColor: 'primary.main' },
+          }}
+        >
+          ファイルを選択
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
+function ReportCard({
+  report,
+  onOpen,
+  onMenuOpen,
+}: {
+  report: Report;
+  onOpen: () => void;
+  onMenuOpen: (e: React.MouseEvent<HTMLElement>) => void;
+}) {
+  return (
+    <Card
+      sx={{
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        boxShadow: 'none',
+        bgcolor: 'background.paper',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 222,
+        transition: 'box-shadow 0.2s',
+        '&:hover': { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
+      }}
+    >
+      <CardActionArea onClick={onOpen} sx={{ flex: 1, alignItems: 'flex-start' }}>
+        <CardContent sx={{ p: 3, pb: '24px !important', height: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* Title row */}
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: '4px', mb: '2px' }}>
+              <Typography
+                noWrap
+                sx={{
+                  fontSize: '20px',
+                  fontWeight: 400,
+                  color: 'text.primary',
+                  flex: 1,
+                  minWidth: 0,
+                  lineHeight: 1.5,
+                }}
+              >
+                {report.title}
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={onMenuOpen}
+                sx={{ flexShrink: 0, mt: '2px', mr: '-4px' }}
+              >
+                <MoreVert sx={{ fontSize: 20, color: 'text.secondary' }} />
+              </IconButton>
+            </Box>
+
+            {/* 更新あり badge */}
+            {report.hasUpdates && (
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  border: '1px solid #fb8c00',
+                  borderRadius: '4px',
+                  px: 1,
+                  py: '4px',
+                  mt: '4px',
+                }}
+              >
+                <Info sx={{ fontSize: 16, color: '#fb8c00' }} />
+                <Typography variant="caption" sx={{ color: 'text.primary', fontSize: '12px', lineHeight: 1.66 }}>
+                  更新あり
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
+          {/* History / meta */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px', mt: 'auto' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Avatar sx={{ width: 24, height: 24, fontSize: '11px', bgcolor: 'primary.light', color: 'primary.dark' }}>
+                  {report.author.charAt(0)}
+                </Avatar>
+                <Typography variant="body2" sx={{ fontSize: '14px', color: 'text.primary', lineHeight: 1.57 }}>
+                  {report.author}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                  最終更新：
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                  {report.updatedAt}
+                </Typography>
+              </Box>
+            </Box>
+            <Typography
+              variant="caption"
+              sx={{
+                fontSize: '12px',
+                color: 'text.primary',
+                lineHeight: 1.66,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              GRIスタンダードを参照し、環境・社会・ガバナンス（ESG）への包括的な取り組みと詳細データを網羅した年次報告書です。
+            </Typography>
+          </Box>
+        </CardContent>
+      </CardActionArea>
+    </Card>
+  );
+}
+
